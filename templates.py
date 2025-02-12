@@ -64,6 +64,9 @@ def get_template(param, **kwargs):
     elif param == 'smosL4SMaup':
         dtype, hdr, length = template_smosL4SMaup()
 
+    elif param == 'smapL4SMaup':
+        dtype, hdr, length = template_smapL4SMaup()
+
     else:
         logging.warning('No template found for "' + param + '".')
         dtype, hdr, length = (None, None, None)
@@ -474,6 +477,48 @@ def template_smosL4SMaup():
     return dtype, hdr, length
 
 
+def template_smapL4SMaup():
+    """"
+    Template for reading smos L4 soil moisture DA output
+
+    """
+
+    hdr = None
+    length = None
+    dtype = np.dtype([('obs_h_time', '>f8'),
+                      ('obs_v_time', '>f8'),
+                      ('res_h_flag', '>i4'),
+                      ('res_v_flag', '>i4'),
+                      ('orbit_h_flag', '>i4'),
+                      ('orbit_v_flag', '>i4'),
+                      ('obs_h', '>f4'),
+                      ('obs_v', '>f4'),
+                      ('obs_h_assim', '>f4'),
+                      ('obs_v_assim', '>f4'),
+                      ('obs_h_errstd', '>f4'),
+                      ('obs_v_errstd', '>f4'),
+                      ('fcst_h', '>f4'),
+                      ('fcst_v', '>f4'),
+                      ('fcst_h_ensstd', '>f4'),
+                      ('fcst_v_ensstd', '>f4'),
+                      ('sm_srfc_fcst', '>f4'),
+                      ('sm_rz_fcst', '>f4'),
+                      ('sm_prof_fcst', '>f4'),
+                      ('surface_temp_fcst', '>f4'),
+                      ('soil_temp_fcst', '>f4'),
+                      ('sm_srfc_ana', '>f4'),
+                      ('sm_rz_ana', '>f4'),
+                      ('sm_prof_ana', '>f4'),
+                      ('surface_temp_ana', '>f4'),
+                      ('soil_temp_ana', '>f4'),
+                      ('sm_srfc_ana_ensstd', '>f4'),
+                      ('sm_rz_ana_ensstd', '>f4'),
+                      ('sm_prof_ana_ensstd', '>f4'),
+                      ('surface_temp_ana_ensstd', '>f4'),
+                      ('soil_temp_ana_ensstd', '>f4'),
+                      ])
+
+    return dtype, hdr, length
 
 
 

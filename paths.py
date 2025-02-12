@@ -7,7 +7,6 @@ from pathlib import Path
 class paths(object):
     """
     Class holding the most important LDAS path definitions
-
     Parameters
     ----------
     mode : string
@@ -18,7 +17,6 @@ class paths(object):
         experiment name (appended to root path)
     domain : string
         domain name (appended to experiment path)
-
     Attributes
     ----------
     exp_root : string
@@ -35,7 +33,6 @@ class paths(object):
         Path to restart files (for continuing processing or spin-up)
     plots : string
         Path to plots
-
     """
 
     def __init__(self, mode, root=None, exp=None, domain=None):
