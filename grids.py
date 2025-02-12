@@ -33,7 +33,6 @@ class EASE2(object):
     """
 
     def __init__(self, tilecoord=None, tilegrids=None, gtype=None):
-
         self.tilecoord = tilecoord
         self.tilegrids = tilegrids
 
@@ -42,27 +41,36 @@ class EASE2(object):
                 logging.error('No grid type specified and no tilegrids file available.')
                 return
             else:
-                gtype = self.tilegrids.gridtype['global'].decode('utf-8').strip().split('_')[1]
+                grid_str = self.tilegrids.gridtype['global'].decode('utf-8').strip()
+                print(f"DEBUG: Processed gridtype['global']: {grid_str}")
+
+                if 'EASE' in grid_str:
+                    gtype = grid_str.split('_')[1]
+                elif 'LatLon' in grid_str:
+                    gtype = 'LatLon'  # Custom handling for LatLon grids
+                else:
+                    raise ValueError(f"Unsupported gridtype format: {grid_str}")
 
         if (tilecoord is None) or (tilegrids is None):
             logging.warning('tilecoord and/or tilegrids not specified! LatLon - ColRow conversions will not work properly!')
 
         self.setup_grid(gtype)
 
-
     def setup_grid(self, gridtype):
-
         if gridtype == 'M36':
             map_scale = 36032.220840584
         elif gridtype == 'M25':
-            map_scale = 25025.26 # fewer digits are defined by NSIDC to avoid projection issues at +-180 degree
+            map_scale = 25025.26
         elif gridtype == 'M09':
             map_scale = 9008.055210146
         elif gridtype == 'M03':
             map_scale = 3002.6850700487
+        elif gridtype == 'LatLon':
+            self.ease_lons = np.arange(-180, 180, self.tilegrids.loc['global', 'dlon'])
+            self.ease_lats = np.arange(-90, 90, self.tilegrids.loc['global', 'dlat'])
+            return  # Skip EASE2-specific setup
         else:
-            raise NotImplementedError(
-                "Only M03, M09 and M36 grids supported .")
+            raise NotImplementedError("Only M03, M09, M36, and LatLon grids are supported.")
 
         # Upper boundary of north(south)-most M36 pixel. Used for cutting all valid M03/M09 pixels above (below).
         latmax = 85.04457

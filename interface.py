@@ -103,12 +103,13 @@ class LDAS_io(object):
 
             if param == 'ObsFcstAna':
                 self.files = np.sort(list(path.glob(f'**/*{param}.*.bin')))
+            elif param == 'smapL4SMaup':
+                self.files = np.sort(list(path.glob(f'**/*{param}.*.bin')))
             else:
                 if self.mode == 'GEOSldas':
                     self.files = np.sort(list(path.glob(f'**/*{param}.*.nc4')))
                 else:
                     self.files = np.sort(list(path.glob(f'**/*{param}*.bin')))
-
 
             if param == 'hscale':
                 self.pentads = np.array([f.name[-6:-4] for f in self.files]).astype('int')
@@ -918,6 +919,17 @@ class LDAS_io(object):
         dataset.close()
         self.images = xr.open_dataset(out_file)
 
+    def read_nc4_file(fname):
+        # Open the NetCDF file
+        with Dataset(fname, mode='r') as nc_file:
+            # Create a dictionary to store all variables
+            data = {}
+
+            # Iterate over all variables in the file and read them
+            for var_name in nc_file.variables.keys():
+                data[var_name] = nc_file.variables[var_name][:]
+
+        return data
 
     def mergenc4files(self,
                    overwrite=False,
@@ -984,8 +996,14 @@ class LDAS_io(object):
 
         # Use grid lon lat to avoid rounding issues
         tmp_tilecoord = self.grid.tilecoord.copy()
-        tmp_tilecoord['com_lon'] = self.grid.ease_lons[self.grid.tilecoord.i_indg]
-        tmp_tilecoord['com_lat'] = self.grid.ease_lats[self.grid.tilecoord.j_indg]
+        if 'LatLon' in self.grid.tilegrids.gridtype['global'].decode('utf-8'):
+            tmp_tilecoord['com_lon'] = self.grid.ease_lons[
+                self.grid.tilecoord.i_indg.clip(upper=len(self.grid.ease_lons) - 1)]
+            tmp_tilecoord['com_lat'] = self.grid.ease_lats[
+                self.grid.tilecoord.j_indg.clip(upper=len(self.grid.ease_lats) - 1)]
+        else:
+            tmp_tilecoord['com_lon'] = self.grid.ease_lons[self.grid.tilecoord.i_indg]
+            tmp_tilecoord['com_lat'] = self.grid.ease_lats[self.grid.tilecoord.j_indg]
 
         # Clip region based on specified coordinate boundaries
         ind_img = self.grid.tilecoord[(tmp_tilecoord['com_lon']>=lonmin)&(tmp_tilecoord['com_lon']<=lonmax)&
@@ -1004,18 +1022,28 @@ class LDAS_io(object):
                     if attr[0] != '_':
                         dataset[var].setncattr(attr, ds[var].getncattr(attr))
 
-        for i, (f, dt) in enumerate(zip(files,dates)):
+        for i, (f, dt) in enumerate(zip(files, dates)):
             logging.info('%d / %d' % (i, len(dates)))
 
             with Dataset(f) as data:
-                img = np.full((len(lats),len(lons)), -9999., dtype='float32')
-                ind_lat = self.grid.tilecoord.loc[ind_img, 'j_indg'].values - self.grid.tilegrids.loc['domain','j_offg'] - j_offg_2
-                ind_lon = self.grid.tilecoord.loc[ind_img, 'i_indg'].values - self.grid.tilegrids.loc['domain','i_offg'] - i_offg_2
+                img = np.full((len(lats), len(lons)), -9999., dtype='float32')
 
+                # Extract indices
+                ind_lat = self.grid.tilecoord.loc[ind_img, 'j_indg'].values - self.grid.tilegrids.loc[
+                    'domain', 'j_offg'] - j_offg_2
+                ind_lon = self.grid.tilecoord.loc[ind_img, 'i_indg'].values - self.grid.tilegrids.loc[
+                    'domain', 'i_offg'] - i_offg_2
+
+                # Check if grid type is LatLon, and clip indices if necessary
+                if 'LatLon' in self.grid.tilegrids.gridtype['global'].decode('utf-8'):
+                    ind_lat = np.clip(ind_lat, 0, len(lats) - 1)
+                    ind_lon = np.clip(ind_lon, 0, len(lons) - 1)
+
+                # Assign values
                 for var in variables:
-                    tmp_img = data[var][0,ind_img-1].data
-                    img[ind_lat,ind_lon] = tmp_img
-                    dataset.variables[var][i,:,:] = img
+                    tmp_img = data[var][0, ind_img - 1].data
+                    img[ind_lat, ind_lon] = tmp_img
+                    dataset.variables[var][i, :, :] = img
 
         # Save file to disk and loat it as xarray Dataset into the class variable space
         dataset.close()
